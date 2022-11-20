@@ -59,7 +59,14 @@ public class RequestCtxFactory {
      */
     public AbstractRequestCtx getRequestCtx(Node root) throws ParsingException {
 
+        long startTime = System.nanoTime();
         String requestCtxNs = root.getNamespaceURI();
+        long endTime = System.nanoTime();
+        long duration = (endTime - startTime);
+        System.out.println("\n=========Convert request string to AbstractRequestCtx in Evaluation1 Time elapsed (us) ================");
+        System.out.println(duration/1000);
+        System.out.println("===========================================================");
+
 
         if(requestCtxNs != null){
             if(XACMLConstants.REQUEST_CONTEXT_3_0_IDENTIFIER.equals(requestCtxNs.trim())){
@@ -85,14 +92,29 @@ public class RequestCtxFactory {
      */
     public AbstractRequestCtx getRequestCtx(String request) throws ParsingException {
 
+        
+        // long startTime = System.nanoTime();
         Node root = getXacmlRequest(request);
+        // long endTime = System.nanoTime();
+        // long duration = (endTime - startTime);
+        // System.out.println("\n=========Convert request string to w3c.dom.node costs elapsed (us) ================"+duration/1000);
+
+
         String requestCtxNs = root.getNamespaceURI();
 
         if(requestCtxNs != null){
             if(XACMLConstants.REQUEST_CONTEXT_3_0_IDENTIFIER.equals(requestCtxNs.trim())){
-                return RequestCtx.getInstance(root);
+                // System.out.println("tag107-1");
+                // startTime = System.nanoTime();
+                AbstractRequestCtx res = RequestCtx.getInstance(root);
+                // endTime = System.nanoTime();
+                // duration = (endTime - startTime);
+                // System.out.println("\n=========Convert request w3c.dom.node to AbstractRequestCtx costs elapsed (us) ================"+duration/1000);
+
+                return res;
             } else if(XACMLConstants.REQUEST_CONTEXT_1_0_IDENTIFIER.equals(requestCtxNs.trim()) ||
                     XACMLConstants.REQUEST_CONTEXT_2_0_IDENTIFIER.equals(requestCtxNs.trim())) {
+                System.out.println("tag107-2");
                 return org.wso2.balana.ctx.xacml2.RequestCtx.getInstance(root);
             } else {
                 throw new ParsingException("Invalid namespace in XACML request");

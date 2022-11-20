@@ -135,6 +135,27 @@ public class PolicyFinder {
     }
 
     /**
+     * @author qiwei
+     * Add the unordered <code>Set</code> of <code>PolicyFinderModule</code>s used by this class to
+     * find policies.
+     *
+     * @param modules a <code>Set</code> of <code>PolicyFinderModule</code>s
+     */
+    public void addModules(PolicyFinderModule pfm) {
+        allModules.add(pfm);
+        logger.debug("addModules is called");
+        if (pfm.isRequestSupported()) {
+            requestModules.add(pfm);
+            logger.debug("add a requestPolicyModule (qiwei)");
+        }
+
+
+        if (pfm.isIdReferenceSupported())
+            referenceModules.add(pfm);
+
+    }
+
+    /**
      * Initializes all modules in this finder.
      */
     public void init() {
@@ -163,8 +184,11 @@ public class PolicyFinder {
         PolicyFinderResult result = null;
         Iterator it = requestModules.iterator();
 
+        int counter = 0;
         // look through all of the modules
         while (it.hasNext()) {
+            logger.debug("counter = " + counter);
+            counter = counter + 1;
             PolicyFinderModule module = (PolicyFinderModule) (it.next());
             PolicyFinderResult newResult = module.findPolicy(context);
 

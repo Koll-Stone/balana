@@ -565,7 +565,7 @@ public abstract class AbstractPolicy  implements PolicyTreeElement{
      * @return the result of evaluation
      */
     public AbstractResult evaluate(EvaluationCtx context) {
-        
+        // System.out.println("AbstractResult evaluate(EvaluationCtx) is called");
         // evaluate
         AbstractResult result = combiningAlg.combine(context, parameters, childElements);
 

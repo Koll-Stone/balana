@@ -16,20 +16,8 @@
 
 package org.wso2.balana.finder.impl;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.List;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
+import java.util.*;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -44,60 +32,54 @@ import org.wso2.balana.PolicyReference;
 import org.wso2.balana.PolicySet;
 import org.wso2.balana.VersionConstraints;
 import org.wso2.balana.combine.PolicyCombiningAlgorithm;
-import org.wso2.balana.combine.xacml2.DenyOverridesPolicyAlg;
+import org.wso2.balana.combine.xacml3.DenyOverridesPolicyAlg;
 import org.wso2.balana.ctx.EvaluationCtx;
 import org.wso2.balana.ctx.Status;
 import org.wso2.balana.finder.PolicyFinder;
 import org.wso2.balana.finder.PolicyFinderModule;
 import org.wso2.balana.finder.PolicyFinderResult;
-import org.wso2.balana.utils.Utils;
+import org.wso2.balana.finder.impl.FileBasedPolicyFinderModule;
 import org.wso2.balana.ParsingException;
 
 /**
- * This is file based policy repository.  Policies can be inside the directory in a file system.
- * Then you can set directory location using "org.wso2.balana.PolicyDirectory" JAVA property
+ * @author qiwei
+ * this is an updatable policy finder module
+ * it can change stored policies by retreiving new policy from a List<Document>
  */
-public class FileBasedPolicyFinderModule extends PolicyFinderModule {
+public class updatablePolicyFinderModule extends PolicyFinderModule {
 
     private PolicyFinder finder = null;
 
     private Map<URI, AbstractPolicy> policies;
-
-    private Set<String> policyLocations;
 
     private PolicyCombiningAlgorithm combiningAlg;
 
     /**
      * the logger we'll use for all messages
      */
-    private static final Log log = LogFactory.getLog(FileBasedPolicyFinderModule.class);
+    private static final Log log = LogFactory.getLog(updatablePolicyFinderModule.class);
 
-    public static final String POLICY_DIR_PROPERTY = "org.wso2.balana.PolicyDirectory";
 
-    public FileBasedPolicyFinderModule() {
+//    public static void main(String[] args) {
+//        updatablePolicyFinderModule upfm = new updatablePolicyFinderModule();
+//        PolicyFinder policyFinder = new PolicyFinder();
+//        upfm.init(policyFinder);
+//    }
+
+    public updatablePolicyFinderModule() {
         policies = new HashMap<URI, AbstractPolicy>();
-        if (System.getProperty(POLICY_DIR_PROPERTY) != null) {
-            policyLocations = new HashSet<String>();
-            policyLocations.add(System.getProperty(POLICY_DIR_PROPERTY));
-        }
-    }
-
-    public FileBasedPolicyFinderModule(Set<String> policyLocations) {
-        policies = new HashMap<URI, AbstractPolicy>();
-        this.policyLocations = policyLocations;
-    }
-
-    @Override
-    public void init(PolicyFinder finder) {
-
-        this.finder = finder;
-        loadPolicies();
         combiningAlg = new DenyOverridesPolicyAlg();
     }
 
-    @Override
-    public PolicyFinderResult findPolicy(EvaluationCtx context) {
 
+    public void init(PolicyFinder finder) {
+
+        this.finder = finder;
+    }
+
+
+    public PolicyFinderResult findPolicy(EvaluationCtx context) {
+        log.debug("findpolicy function in updatablePolicyFinderModule is called");
         ArrayList<AbstractPolicy> selectedPolicies = new ArrayList<AbstractPolicy>();
         Set<Map.Entry<URI, AbstractPolicy>> entrySet = policies.entrySet();
 
@@ -144,7 +126,7 @@ public class FileBasedPolicyFinderModule extends PolicyFinderModule {
         }
     }
 
-    @Override
+
     public PolicyFinderResult findPolicy(URI idReference, int type, VersionConstraints constraints,
                                          PolicyMetaData parentMetaData) {
 
@@ -169,102 +151,17 @@ public class FileBasedPolicyFinderModule extends PolicyFinderModule {
         return new PolicyFinderResult(status);
     }
 
-    @Override
+
     public boolean isIdReferenceSupported() {
         return true;
     }
 
-    @Override
+
     public boolean isRequestSupported() {
         return true;
     }
 
-    /**
-     * Re-sets the policies known to this module to those contained in the
-     * given files.
-     */
-    protected void loadPolicies() {
 
-        policies.clear();
-
-        for (String policyLocation : policyLocations) {
-
-            File file = new File(policyLocation);
-            if (!file.exists()) {
-                continue;
-            }
-
-            if (file.isDirectory()) {
-                String[] files = file.list();
-                if (files != null) {
-                    for (String policyFileLocation : files) {
-                        File policyFile = new File(policyLocation + File.separator + policyFileLocation);
-                        // we check for hidden files to avoid hidden OS files.
-                        if (!policyFile.isDirectory() && !policyFile.isHidden()) {
-                            loadPolicy(policyLocation + File.separator + policyFileLocation, finder);
-                        }
-                    }
-                }
-            } else {
-                loadPolicy(policyLocation, finder);
-            }
-        }
-    }
-
-    /**
-     * Private helper that tries to load the given file-based policy, and
-     * returns null if any error occurs.
-     *
-     * @param policyFile file path to policy
-     * @param finder     policy finder
-     * @return org.w3c.dom.Element
-     */
-    protected Element loadPolicy(String policyFile, PolicyFinder finder) {
-        Element root = null;
-        AbstractPolicy policy = null;
-        InputStream stream = null;
-
-        try {
-            // create the factory
-            DocumentBuilderFactory factory = Utils.getSecuredDocumentBuilderFactory();
-            factory.setIgnoringComments(true);
-            factory.setNamespaceAware(true);
-            factory.setValidating(false);
-
-            // create a builder based on the factory & try to load the policy
-            DocumentBuilder db = factory.newDocumentBuilder();
-            stream = new FileInputStream(policyFile);
-            Document doc = db.parse(stream);
-
-            // handle the policy, if it's a known type
-            root = doc.getDocumentElement();
-            String name = DOMHelper.getLocalName(root);
-
-            if (name.equals("Policy")) {
-                policy = Policy.getInstance(root);
-            } else if (name.equals("PolicySet")) {
-                policy = PolicySet.getInstance(root, finder);
-            }
-        } catch (Exception e) {
-            // just only logs
-            log.error("Fail to load policy : " + policyFile, e);
-        } finally {
-            if (stream != null) {
-                try {
-                    stream.close();
-                } catch (IOException e) {
-                    log.error("Error while closing input stream");
-                }
-            }
-        }
-
-        if (policy != null) {
-            System.out.println("add policy, id: " + policy.getId() + "\n");
-            policies.put(policy.getId(), policy);
-        }
-
-        return root;
-    }
 
     /**
      * @author qiwei
@@ -272,24 +169,25 @@ public class FileBasedPolicyFinderModule extends PolicyFinderModule {
      * returns null if any error occurs.
      *
      * @param policyDocuments the policies in memory
-     * @return org.w3c.dom.Element
+     *
      */
-    protected void loadPolicyBatchFromMemory(List<Document> policyDocuments) {
+    public void loadPolicyBatchFromMemory(List<Document> policyDocuments) {
         for (Document d : policyDocuments) {
             AbstractPolicy p = loadPolicyFromMemory(d);
             policies.put(p.getId(), p);
+            log.debug("add policy, id: " + p.getId());
         }
     }
 
     /**
      * @author qiwei
-     * Private helper that tries to load the given file-based policy, and
+     * Private helper that tries to load the given Document policy, and
      * returns null if any error occurs.
      *
      * @param policyDocument the policies in memory
      * @return org.w3c.dom.Element
      */
-    private AbstractPolicy loadPolicyFromMemory(Document policyDocument) {
+    public AbstractPolicy loadPolicyFromMemory(Document policyDocument) {
         // based this largely on the FileBasedPolicyFinderModule implementation...strong potential for refactoring / pull-up here...
         AbstractPolicy policy = null;
         Element root = policyDocument.getDocumentElement();
@@ -304,9 +202,24 @@ public class FileBasedPolicyFinderModule extends PolicyFinderModule {
             }
         } catch (ParsingException e) {
             // just only logs
-            log.error("Fail to load policy : " + policyDocument.getDocumentElement().getNodeName(), e);
+            log.error("Fail to load policy from memory: " + policyDocument.getDocumentElement().getNodeName(), e);
         }
         return policy;
+    }
+
+
+    /**
+     * @author qiwei
+     * public function that deletes a policy with the given id
+     *
+     * @param policy id
+     **/
+    public void deletePolicy(URI pid) {
+        policies.remove(pid);
+    }
+
+    public Set<URI> showPolicies() {
+        return policies.keySet();
     }
 
 }

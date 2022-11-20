@@ -101,6 +101,7 @@ public class FirstApplicablePolicyAlg extends PolicyCombiningAlgorithm {
      * @return the result of running the combining algorithm
      */
     public AbstractResult combine(EvaluationCtx context, List parameters, List policyElements) {
+	    System.out.println("first applicale policy is called");
         Iterator it = policyElements.iterator();
         while (it.hasNext()) {
             AbstractPolicy policy = ((PolicyCombinerElement) (it.next())).getPolicy();

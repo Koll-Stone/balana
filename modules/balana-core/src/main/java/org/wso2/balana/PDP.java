@@ -98,6 +98,14 @@ public class PDP {
     }
 
     /**
+     * @author qiwei
+     * return pdpconfig so that it can be modefied
+     * */
+    public PDPConfig getPdpConfig() {
+        return pdpConfig;
+    }
+
+    /**
      * Attempts to evaluate the request against the policies known to this PDP. This is really the
      * core method of the entire XACML specification, and for most people will provide what you
      * want. If you need any special handling, you should look at the version of this method that
@@ -110,13 +118,27 @@ public class PDP {
      * @return a response paired to the request
      */
     public String evaluate(String request) {
-
+        System.out.println("*******evaluate******");
         AbstractRequestCtx requestCtx;
         ResponseCtx responseCtx;
 
         try {
+            // long startTime = System.nanoTime();
             requestCtx = RequestCtxFactory.getFactory().getRequestCtx(request.replaceAll(">\\s+<", "><"));
-            responseCtx = evaluate(requestCtx);
+            // long endTime = System.nanoTime();
+            // long duration = (endTime - startTime);
+            // System.out.println("\n=========Convert request string to AbstractRequestCtx in Evaluation1 Time elapsed (us) ================"+duration/1000);
+
+
+            // startTime = System.nanoTime();
+        	responseCtx = evaluate(requestCtx);
+            // endTime = System.nanoTime();
+            // duration = (endTime - startTime);
+            // System.out.println("\n=========Calling Evaluation2 Time elapsed (us) ================"+duration/1000);
+            
+		    
+            
+            
         } catch (ParsingException e) {
             String error = "Invalid request  : " + e.getMessage();
             logger.error(error);
@@ -150,8 +172,22 @@ public class PDP {
 
         EvaluationCtx evalContext = null;
         try {
-            evalContext = EvaluationCtxFactory.getFactory().getEvaluationCtx(request, pdpConfig);
-            return evaluate(evalContext);
+	        // long startTime = System.nanoTime();
+	        evalContext = EvaluationCtxFactory.getFactory().getEvaluationCtx(request, pdpConfig);
+            // long endTime = System.nanoTime();
+            // long duration = (endTime - startTime);
+            // System.out.println("\n=========Converting request from AbstractRequestCtx to EvaluationCtx in Evaluation3 Time elapsed (us) ================"+duration/1000);
+
+
+            // startTime = System.nanoTime();
+		    ResponseCtx res = evaluate(evalContext);
+            // endTime = System.nanoTime();
+            // duration = (endTime - startTime);
+            // System.out.println("\n=========Calling Evaluation3 Time elapsed (us) ================"+duration/1000);
+
+
+
+            return res;
         } catch (ParsingException e) {
             logger.error("Invalid request  : " + e.getMessage());
             // there was something wrong with the request, so we return
@@ -178,32 +214,48 @@ public class PDP {
      * @return a response based on the contents of the context
      */
     public ResponseCtx evaluate(EvaluationCtx context) {
+        // long startTime = System.nanoTime();
+        // long endTime = System.nanoTime();
+        // long duration = System.nanoTime();
 
         // check whether this PDP configure to support multiple decision profile
         if (pdpConfig.isMultipleRequestHandle()) {
-
+            // System.out.println("tag1");
             Set<EvaluationCtx> evaluationCtxSet;
             MultipleCtxResult multipleCtxResult = context.getMultipleEvaluationCtx();
             if (multipleCtxResult.isIndeterminate()) {
+                // System.out.println("tag1-1");
                 return new ResponseCtx(ResultFactory.getFactory().
                         getResult(AbstractResult.DECISION_INDETERMINATE, multipleCtxResult.getStatus(), context));
             } else {
+                // System.out.println("tag1-2");
+                // endTime = System.nanoTime();
+                // duration = endTime - startTime;
+                // System.out.println("\n=========Determining MultipHandle in Evaluation3 Time elapsed (us) ================"+duration/1000);
+
                 evaluationCtxSet = multipleCtxResult.getEvaluationCtxSet();
                 HashSet<AbstractResult> results = new HashSet<AbstractResult>();
                 for (EvaluationCtx ctx : evaluationCtxSet) {
                     // do the evaluation, for all evaluate context
+                    // startTime = System.nanoTime();
                     AbstractResult result = evaluateContext(ctx);
+                    // endTime = System.nanoTime();
+                    // duration = endTime - startTime;
+                    // System.out.println("\n=========Calling Evaluation4 Time elapsed (us) ================"+duration/1000);
                     // add the result
                     results.add(result);
                 }
+                
+
                 // XACML 3.0.version
                 return new ResponseCtx(results, XACMLConstants.XACML_VERSION_3_0);
             }
         } else {
             // this is special case that specific to XACML3 request
-
+            System.out.println("tag2");
             if (context instanceof XACML3EvaluationCtx && ((XACML3EvaluationCtx) context).
                     isMultipleAttributes()) {
+                System.out.println("tag3");
                 ArrayList<String> code = new ArrayList<String>();
                 code.add(Status.STATUS_SYNTAX_ERROR);
                 Status status = new Status(code, "PDP does not supports multiple decision profile. " +
@@ -213,6 +265,7 @@ public class PDP {
                                 status, context));
             } else if (context instanceof XACML3EvaluationCtx && ((RequestCtx) context.
                     getRequestCtx()).isCombinedDecision()) {
+                System.out.println("tag4");
                 List<String> code = new ArrayList<String>();
                 code.add(Status.STATUS_PROCESSING_ERROR);
                 Status status = new Status(code, "PDP does not supports multiple decision profile. " +
@@ -221,6 +274,7 @@ public class PDP {
                         getResult(AbstractResult.DECISION_INDETERMINATE,
                                 status, context));
             } else {
+                System.out.println("tag5");
                 return new ResponseCtx(evaluateContext(context));
             }
         }
@@ -235,8 +289,16 @@ public class PDP {
      * @return a response
      */
     private AbstractResult evaluateContext(EvaluationCtx context) {
+    	// System.out.println("AbstractResult evaluateContext(EvaluationCtx) is called!! ");
+        // long startTime = System.nanoTime();
+        // long endTime = System.nanoTime();
+        // long duration = System.nanoTime();
+    	
+
+
         // first off, try to find a policy
         PolicyFinderResult finderResult = policyFinder.findPolicy(context);
+        
 
         // see if there weren't any applicable policies
         if (finderResult.notApplicable()) {
@@ -257,9 +319,19 @@ public class PDP {
             processPolicyReferences(finderResult.getPolicy(), references);
             ((XACML3EvaluationCtx) context).setPolicyReferences(references);
         }
+        // endTime = System.nanoTime();
+        // duration = endTime - startTime;
+        // System.out.println("\n=========Finding matching policy in Evaluation4 Time elapsed (us) ================"+duration/1000);
 
+
+        
+        // startTime = System.nanoTime();
         // so we can do the evaluation
-        return finderResult.getPolicy().evaluate(context);
+        AbstractResult abstractResult = finderResult.getPolicy().evaluate(context);
+        // endTime = System.nanoTime();
+        // duration = endTime - startTime;
+        // System.out.println("\n=========Final evaluating by policy in Evaluation4 Time elapsed (us) ================"+duration/1000);
+        return abstractResult;
     }
 
     /**

@@ -100,6 +100,7 @@ public class FirstApplicableRuleAlg extends RuleCombiningAlgorithm {
      * @return the result of running the combining algorithm
      */
     public AbstractResult combine(EvaluationCtx context, List parameters, List ruleElements) {
+//    	System.out.println("first applicalbe rule is called");
         Iterator it = ruleElements.iterator();
         while (it.hasNext()) {
             Rule rule = ((RuleCombinerElement) (it.next())).getRule();

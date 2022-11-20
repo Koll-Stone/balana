@@ -20,6 +20,14 @@ import org.wso2.balana.attr.AttributeSelectorFactory;
 
 import java.net.URI;
 
+import java.io.StringWriter;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.lang.Exception;
+
 /**
  * This is a package-private utility class that handles parsing all the possible expression types.
  * It was added becuase in 2.0 multiple classes needed this. Note that this could also be added to
@@ -86,11 +94,25 @@ public class ExpressionHandler {
             throws ParsingException {
 
         String functionName;
+        String thexml = null;
 
         try {
+            StringWriter writer = new StringWriter();
+            Transformer transformer = TransformerFactory.newInstance().newTransformer();
+            transformer.transform(new DOMSource(root), new StreamResult(writer));
+            thexml = writer.toString();
+        } catch (Exception e) {
+            System.out.println("convert Node root to string wrong ");
+        }
+
+
+        try {
+
             Node functionNode = root.getAttributes().getNamedItem("FunctionId");
             functionName = functionNode.getNodeValue();
         } catch (Exception e) {
+
+            System.out.println("the faulty node is " + thexml);
             throw new ParsingException("Error parsing required FunctionId in " +
                     "FunctionType", e);
         }

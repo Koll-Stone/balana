@@ -434,6 +434,8 @@ public class PolicyReference extends AbstractPolicy {
      * @return the result of evaluation
      */
     public AbstractResult evaluate(EvaluationCtx context) {
+    
+    	System.out.println("I am called!!!!!!!!!!!!!");
         // if there is no finder, then we return NotApplicable
         if (finder == null){
             //return new Result(Result.DECISION_NOT_APPLICABLE, context.getResourceId().encode());
